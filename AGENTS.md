@@ -27,3 +27,6 @@
 ## Extending
 - Add validators or conversion helpers in `src/runtime/` to keep loader logic thin.
 - Keep new rendering or UI demonstrations under `examples/`.
+
+## Documentation
+- Keep `LLM.txt` up to date whenever public APIs or runtime behaviors change.

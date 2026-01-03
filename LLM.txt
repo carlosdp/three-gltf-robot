@@ -1,0 +1,88 @@
+# three-gltf-robot
+
+GLTFLoader plugin for the `EXT_robot_kinematics` extension plus a lightweight runtime that drives joint DOF nodes by updating their TRS values in-place.
+
+## Purpose
+- Load `EXT_robot_kinematics` data during GLTF parsing and resolve node indices into live `THREE.Object3D` references.
+- Expose a runtime model (`RobotKinematicsModel`) for setting joint values, reading links/joints, and applying named configurations.
+- Keep the scene graph consistent by updating DOF nodes directly (origin nodes stay fixed; DOF nodes move/rotate).
+
+## Key Concepts
+- **Plugin hook**: `RobotKinematicsPlugin` attaches runtime models to `gltf.userData.robotKinematics` and mirrors them under `gltf.userData.extensions.EXT_robot_kinematics`.
+- **Joint values**: `JointValue` is a `number` for single-DOF joints or a `number[]` for multi-DOF joints. Passing a scalar to a multi-DOF joint updates only the first DOF.
+- **Clamping**: Values clamp to joint limits by default. Pass `{ clamp: false }` to skip clamping.
+- **Mimic joints**: When a joint has a `mimic` definition, updating the source joint automatically updates its dependents.
+
+## Basic Loader Integration
+```ts
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { registerRobotKinematics, getRobotKinematics } from 'three-gltf-robot';
+
+const loader = new GLTFLoader();
+registerRobotKinematics(loader);
+
+loader.load('robot.glb', (gltf) => {
+  const models = getRobotKinematics(gltf);
+  const model = models[0];
+  model?.setJointValue('shoulder_pan', 0.3);
+});
+```
+
+## Selecting a Specific Model
+```ts
+const models = getRobotKinematics(gltf);
+const model = models.find((candidate) => candidate.name === 'arm');
+if (model) {
+  model.setJointValue('elbow', 1.2);
+}
+```
+
+## Multi-DOF Joint Control
+```ts
+model.setJointValue('wrist', [0.1, -0.2, 0.05]);
+model.setJointDofValue('wrist', 2, 0.15);
+```
+
+## Apply a Named Configuration
+```ts
+model.applyConfiguration('home');
+```
+
+## Bulk Updates With Optional Unclamped Values
+```ts
+model.setJointValues(
+  {
+    shoulder_pan: 0.3,
+    shoulder_lift: -0.5,
+    elbow: 1.1,
+  },
+  { clamp: false }
+);
+```
+
+## Inspect Links and Joints
+```ts
+const baseLink = model.getLink('base');
+const wristJoint = model.getJoint('wrist');
+const current = model.getJointValue('wrist');
+
+if (baseLink) {
+  // Access the Three.js node for attaching helpers or visuals.
+  scene.add(baseLink.node);
+}
+```
+
+## Runtime API (Quick Reference)
+- `getRobotKinematics(gltf)`: returns `RobotKinematicsModel[]`.
+- `RobotKinematicsModel` methods:
+  - `getJoint(nameOrIndex)` / `getLink(nameOrIndex)`
+  - `getJointValue(nameOrIndex)`
+  - `setJointValue(nameOrIndex, value, options?)`
+  - `setJointDofValue(nameOrIndex, dofIndex, value, options?)`
+  - `setJointValues(values, options?)`
+  - `applyConfiguration(name, options?)`
+
+## Notes and Gotchas
+- Always call `registerRobotKinematics(loader)` before `loader.load` so the extension is parsed.
+- Joint limits apply by default; pass `{ clamp: false }` to override.
+- Multi-DOF joints expect values in the same order as the `dofs[]` definition.
