@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@lib": ["src/index.ts"],
+      "@lib/*": ["src/*"]
+    },
+    "types": ["vite/client", "jest"]
+  },
+  "include": ["src", "examples", "vite.config.ts"]
+}

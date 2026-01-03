@@ -1,0 +1,218 @@
+import GUI from 'lil-gui';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { getRobotKinematics, registerRobotKinematics } from '@lib';
+
+const canvas = document.querySelector('#c') as HTMLCanvasElement;
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: 'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0a1018');
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 100);
+camera.position.set(1.6, 1.2, 2.4);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.5, 0);
+controls.enableDamping = true;
+
+const keyLight = new THREE.DirectionalLight('#ffffff', 1.2);
+keyLight.position.set(2, 4, 2);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight('#88aaff', 0.6);
+fillLight.position.set(-2, 2, -1);
+scene.add(fillLight);
+
+scene.add(new THREE.AmbientLight('#334455', 0.5));
+scene.add(new THREE.GridHelper(4, 20, '#223045', '#162030'));
+
+const loader = new GLTFLoader();
+registerRobotKinematics(loader);
+
+const ROBOT_GLTF = {
+  asset: {
+    version: '2.0',
+    generator: 'three-gltf-robot example'
+  },
+  extensionsUsed: ['EXT_robot_kinematics'],
+  scenes: [{ nodes: [0] }],
+  nodes: [
+    { name: 'robot_root', children: [1] },
+    { name: 'base_link', children: [2] },
+    {
+      name: 'joint_shoulder_origin',
+      translation: [0, 0.2, 0],
+      children: [3]
+    },
+    { name: 'joint_shoulder_dof0', children: [4] },
+    { name: 'upper_link', children: [5] },
+    {
+      name: 'joint_elbow_origin',
+      translation: [0, 0.0, 0.45],
+      children: [6]
+    },
+    { name: 'joint_elbow_dof0', children: [7] },
+    { name: 'forearm_link' }
+  ],
+  extensions: {
+    EXT_robot_kinematics: {
+      models: [
+        {
+          name: 'demo_robot',
+          rootNode: 0,
+          links: [
+            { name: 'base_link', node: 1 },
+            { name: 'upper_link', node: 4 },
+            { name: 'forearm_link', node: 7 }
+          ],
+          joints: [
+            {
+              name: 'shoulder_pan',
+              type: 'revolute',
+              parentLink: 0,
+              childLink: 1,
+              originNode: 2,
+              dofNodes: [3],
+              dofs: [
+                {
+                  motion: 'rotation',
+                  axis: [0, 1, 0],
+                  limit: { lower: -1.57, upper: 1.57 },
+                  default: 0
+                }
+              ]
+            },
+            {
+              name: 'elbow_flex',
+              type: 'revolute',
+              parentLink: 1,
+              childLink: 2,
+              originNode: 5,
+              dofNodes: [6],
+              dofs: [
+                {
+                  motion: 'rotation',
+                  axis: [1, 0, 0],
+                  limit: { lower: -1.2, upper: 1.2 },
+                  default: 0
+                }
+              ]
+            }
+          ],
+          configurations: {
+            home: { jointPositions: [0, 0] },
+            wave: { jointPositions: [0.8, -0.8] }
+          },
+          source: {
+            format: 'urdf',
+            uri: 'package://demo/robot.urdf',
+            resolvedAt: '2026-01-03T00:00:00Z'
+          }
+        }
+      ]
+    }
+  }
+};
+
+loader.parse(
+  JSON.stringify(ROBOT_GLTF),
+  '',
+  (gltf) => {
+    scene.add(gltf.scene);
+
+    const models = getRobotKinematics(gltf);
+    const model = models[0];
+    if (!model) return;
+
+    addRobotMeshes(model);
+    setupGui(model);
+  },
+  (error) => {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load demo robot.', error);
+  }
+);
+
+function addRobotMeshes(model: ReturnType<typeof getRobotKinematics>[number]) {
+  const base = model.getLink('base_link');
+  const upper = model.getLink('upper_link');
+  const forearm = model.getLink('forearm_link');
+
+  const baseMat = new THREE.MeshStandardMaterial({ color: '#4cc9f0', metalness: 0.2, roughness: 0.4 });
+  const armMat = new THREE.MeshStandardMaterial({ color: '#f72585', metalness: 0.2, roughness: 0.35 });
+  const foreMat = new THREE.MeshStandardMaterial({ color: '#fca311', metalness: 0.2, roughness: 0.4 });
+
+  if (base) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), baseMat);
+    mesh.position.y = 0.05;
+    base.node.add(mesh);
+  }
+
+  if (upper) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.5), armMat);
+    mesh.position.z = 0.25;
+    upper.node.add(mesh);
+  }
+
+  if (forearm) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.45), foreMat);
+    mesh.position.z = 0.22;
+    forearm.node.add(mesh);
+  }
+}
+
+function setupGui(model: ReturnType<typeof getRobotKinematics>[number]) {
+  const gui = new GUI({ width: 280 });
+  const configs = Object.keys(model.configurations ?? {});
+
+  if (configs.length > 0) {
+    const configFolder = gui.addFolder('Configurations');
+    for (const name of configs) {
+      configFolder.add(
+        {
+          [name]: () => model.applyConfiguration(name)
+        },
+        name
+      );
+    }
+  }
+
+  for (const joint of model.joints) {
+    const folder = gui.addFolder(joint.name);
+    joint.dofs.forEach((dof, index) => {
+      const limit = dof.limit;
+      const min = limit?.lower ?? (dof.motion === 'rotation' ? -Math.PI : -0.5);
+      const max = limit?.upper ?? (dof.motion === 'rotation' ? Math.PI : 0.5);
+      const state = { value: joint.values[index] ?? 0 };
+      folder
+        .add(state, 'value', min, max, 0.01)
+        .name(dof.motion === 'rotation' ? `rot ${index}` : `trans ${index}`)
+        .onChange((next: number) => {
+          model.setJointDofValue(joint.name, index, next);
+        });
+    });
+  }
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('resize', onResize);
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+});

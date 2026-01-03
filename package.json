@@ -1,0 +1,42 @@
+{
+  "name": "three-gltf-robot",
+  "version": "0.1.0",
+  "description": "Three.js GLTFLoader extension for EXT_robot_kinematics with URDF bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "test": "jest",
+    "dev": "vite --config vite.config.ts",
+    "example": "vite --config vite.config.ts"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/three": "^0.160.0",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "eslint": "^9.18.0",
+    "jest": "^29.7.0",
+    "lil-gui": "^0.20.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.6"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

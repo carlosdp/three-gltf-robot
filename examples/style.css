@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap');
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  background: radial-gradient(circle at top, #101722, #05070b 70%);
+}
+
+#c {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#overlay {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  padding: 10px 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #e6f1ff;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+.lil-gui {
+  --background-color: rgba(5, 10, 18, 0.86);
+  --title-background-color: rgba(12, 20, 32, 0.96);
+  --text-color: #e6f1ff;
+  --hover-color: #203149;
+  --focus-color: #203149;
+  --number-color: #8dc1ff;
+}
