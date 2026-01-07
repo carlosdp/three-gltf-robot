@@ -19,15 +19,58 @@ body {
   position: fixed;
   left: 16px;
   bottom: 16px;
+  padding: 16px;
+  width: min(340px, calc(100vw - 32px));
+  display: grid;
+  gap: 10px;
+  color: #e6f1ff;
+  background: rgba(4, 8, 14, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+#overlay .eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #8dc1ff;
+}
+
+#overlay .subtitle {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #c9d7ee;
+}
+
+.upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(120deg, rgba(74, 140, 220, 0.3), rgba(120, 200, 255, 0.15));
+  color: #f7fbff;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #e6f1ff;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.upload:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.upload input {
+  display: none;
+}
+
+#status {
+  font-size: 12px;
+  color: #b5c4dd;
 }
 
 .lil-gui {

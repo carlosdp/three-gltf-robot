@@ -24,6 +24,7 @@
     "example": "vite --config vite.config.ts"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "three": "^0.160.0"
   },
   "devDependencies": {

@@ -45,3 +45,26 @@ loader.load('robot.glb', (gltf) => {
 ```
 
 `RobotKinematicsModel` exposes helpers for getting links/joints, applying configurations, and setting joint DOF values.
+
+## URDF ZIP Conversion (Browser)
+
+Convert a ZIP containing a URDF + assets into a glTF JSON with `EXT_robot_kinematics` attached.
+
+```ts
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { convertUrdfZipToGltf, registerRobotKinematics, getRobotKinematics } from 'three-gltf-robot';
+
+const loader = new GLTFLoader();
+registerRobotKinematics(loader);
+
+const file = input.files?.[0];
+if (file) {
+  const result = await convertUrdfZipToGltf(file);
+  loader.parse(result.gltfJson, '', (gltf) => {
+    const models = getRobotKinematics(gltf);
+    console.log(models[0]);
+  });
+}
+```
+
+Supported mesh types: `.glb`, `.gltf`, `.stl`, `.obj`, `.dae` plus URDF primitives (box, cylinder, sphere).

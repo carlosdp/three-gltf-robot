@@ -82,6 +82,16 @@ if (baseLink) {
   - `setJointValues(values, options?)`
   - `applyConfiguration(name, options?)`
 
+## URDF ZIP Conversion Helper
+```ts
+import { convertUrdfZipToGltf } from 'three-gltf-robot';
+
+const result = await convertUrdfZipToGltf(file);
+// result.gltfJson can be fed into GLTFLoader.parse
+```
+
+The helper expects a browser ZIP containing a `.urdf` plus mesh assets and returns glTF JSON with the `EXT_robot_kinematics` extension populated.
+
 ## Notes and Gotchas
 - Always call `registerRobotKinematics(loader)` before `loader.load` so the extension is parsed.
 - Joint limits apply by default; pass `{ clamp: false }` to override.

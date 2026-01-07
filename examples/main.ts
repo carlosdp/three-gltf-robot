@@ -2,9 +2,11 @@ import GUI from 'lil-gui';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { getRobotKinematics, registerRobotKinematics } from '@lib';
+import { convertUrdfZipToGltf, getRobotKinematics, registerRobotKinematics } from '@lib';
 
 const canvas = document.querySelector('#c') as HTMLCanvasElement;
+const statusEl = document.querySelector('#status') as HTMLDivElement;
+const fileInput = document.querySelector('#zip-input') as HTMLInputElement;
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -38,6 +40,9 @@ scene.add(new THREE.GridHelper(4, 20, '#223045', '#162030'));
 
 const loader = new GLTFLoader();
 registerRobotKinematics(loader);
+
+let gui: GUI | null = null;
+let activeRobot: THREE.Object3D | null = null;
 
 const ROBOT_GLTF = {
   asset: {
@@ -124,24 +129,68 @@ const ROBOT_GLTF = {
   }
 };
 
-loader.parse(
-  JSON.stringify(ROBOT_GLTF),
-  '',
-  (gltf) => {
-    scene.add(gltf.scene);
+function setStatus(text: string) {
+  statusEl.textContent = text;
+}
 
-    const models = getRobotKinematics(gltf);
-    const model = models[0];
-    if (!model) return;
+async function loadGltfJson(gltfJson: string, options: { addDemoMeshes?: boolean } = {}) {
+  return await new Promise<void>((resolve, reject) => {
+    loader.parse(
+      gltfJson,
+      '',
+      (gltf) => {
+        if (activeRobot) scene.remove(activeRobot);
+        activeRobot = gltf.scene;
+        scene.add(gltf.scene);
 
-    addRobotMeshes(model);
-    setupGui(model);
-  },
-  (error) => {
+        const models = getRobotKinematics(gltf);
+        const model = models[0];
+        if (!model) {
+          setStatus('Loaded glTF without kinematics.');
+          resolve();
+          return;
+        }
+
+        if (options.addDemoMeshes) {
+          addRobotMeshes(model);
+        }
+        setupGui(model);
+        resolve();
+      },
+      (error) => reject(error)
+    );
+  });
+}
+
+async function loadDemoRobot() {
+  setStatus('Loading demo robot...');
+  try {
+    await loadGltfJson(JSON.stringify(ROBOT_GLTF), { addDemoMeshes: true });
+    setStatus('Demo robot loaded. Upload a URDF zip to replace it.');
+  } catch (error) {
+    setStatus('Failed to load demo robot.');
     // eslint-disable-next-line no-console
-    console.error('Failed to load demo robot.', error);
+    console.error(error);
   }
-);
+}
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  setStatus('Converting URDF zip...');
+
+  try {
+    const result = await convertUrdfZipToGltf(file);
+    await loadGltfJson(result.gltfJson);
+    setStatus('Converted and loaded robot.');
+  } catch (error) {
+    setStatus('Conversion failed. Check console.');
+    // eslint-disable-next-line no-console
+    console.error(error);
+  }
+});
+
+loadDemoRobot();
 
 function addRobotMeshes(model: ReturnType<typeof getRobotKinematics>[number]) {
   const base = model.getLink('base_link');
@@ -172,9 +221,10 @@ function addRobotMeshes(model: ReturnType<typeof getRobotKinematics>[number]) {
 }
 
 function setupGui(model: ReturnType<typeof getRobotKinematics>[number]) {
-  const gui = new GUI({ width: 280 });
-  const configs = Object.keys(model.configurations ?? {});
+  if (gui) gui.destroy();
+  gui = new GUI({ width: 280 });
 
+  const configs = Object.keys(model.configurations ?? {});
   if (configs.length > 0) {
     const configFolder = gui.addFolder('Configurations');
     for (const name of configs) {
