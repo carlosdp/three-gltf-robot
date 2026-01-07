@@ -7,6 +7,7 @@ import { convertUrdfZipToGltf, getRobotKinematics, registerRobotKinematics } fro
 const canvas = document.querySelector('#c') as HTMLCanvasElement;
 const statusEl = document.querySelector('#status') as HTMLDivElement;
 const fileInput = document.querySelector('#zip-input') as HTMLInputElement;
+const downloadButton = document.querySelector('#download-btn') as HTMLButtonElement;
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -43,6 +44,8 @@ registerRobotKinematics(loader);
 
 let gui: GUI | null = null;
 let activeRobot: THREE.Object3D | null = null;
+let latestGlb: ArrayBuffer | null = null;
+let latestGlbName = 'robot.glb';
 
 const ROBOT_GLTF = {
   asset: {
@@ -133,6 +136,12 @@ function setStatus(text: string) {
   statusEl.textContent = text;
 }
 
+function setDownloadState(glb: ArrayBuffer | null, name?: string) {
+  latestGlb = glb;
+  downloadButton.disabled = !glb;
+  if (name) latestGlbName = name;
+}
+
 async function loadGltfJson(gltfJson: string, options: { addDemoMeshes?: boolean } = {}) {
   return await new Promise<void>((resolve, reject) => {
     loader.parse(
@@ -166,6 +175,7 @@ async function loadDemoRobot() {
   setStatus('Loading demo robot...');
   try {
     await loadGltfJson(JSON.stringify(ROBOT_GLTF), { addDemoMeshes: true });
+    setDownloadState(null);
     setStatus('Demo robot loaded. Upload a URDF zip to replace it.');
   } catch (error) {
     setStatus('Failed to load demo robot.');
@@ -178,16 +188,31 @@ fileInput.addEventListener('change', async () => {
   const file = fileInput.files?.[0];
   if (!file) return;
   setStatus('Converting URDF zip...');
+  setDownloadState(null);
 
   try {
     const result = await convertUrdfZipToGltf(file);
     await loadGltfJson(result.gltfJson);
+    const glb = buildGlbFromGltfJson(result.gltfJson);
+    const filename = file.name.replace(/\.zip$/i, '') || 'robot';
+    setDownloadState(glb, `${filename}.glb`);
     setStatus('Converted and loaded robot.');
   } catch (error) {
     setStatus('Conversion failed. Check console.');
     // eslint-disable-next-line no-console
     console.error(error);
   }
+});
+
+downloadButton.addEventListener('click', () => {
+  if (!latestGlb) return;
+  const blob = new Blob([latestGlb], { type: 'model/gltf-binary' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = latestGlbName;
+  link.click();
+  URL.revokeObjectURL(url);
 });
 
 loadDemoRobot();
@@ -258,6 +283,75 @@ function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function buildGlbFromGltfJson(gltfJson: string): ArrayBuffer {
+  const gltf = JSON.parse(gltfJson) as {
+    asset?: { version?: string };
+    buffers?: Array<{ uri?: string; byteLength?: number }>;
+  };
+
+  let binData = new Uint8Array(0);
+  if (gltf.buffers?.length) {
+    const uri = gltf.buffers[0].uri;
+    if (uri && uri.startsWith('data:')) {
+      const base64Index = uri.indexOf('base64,');
+      if (base64Index >= 0) {
+        const base64 = uri.slice(base64Index + 'base64,'.length);
+        const binary = atob(base64);
+        binData = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          binData[i] = binary.charCodeAt(i);
+        }
+        delete gltf.buffers[0].uri;
+        gltf.buffers[0].byteLength = binData.byteLength;
+      }
+    }
+  }
+
+  const jsonString = JSON.stringify(gltf);
+  const jsonBytes = new TextEncoder().encode(jsonString);
+  const jsonPadded = padTo4(jsonBytes, 0x20);
+  const binPadded = padTo4(binData, 0x00);
+
+  const hasBin = binPadded.length > 0;
+  const totalLength = 12 + 8 + jsonPadded.length + (hasBin ? 8 + binPadded.length : 0);
+  const glbBuffer = new ArrayBuffer(totalLength);
+  const view = new DataView(glbBuffer);
+
+  let offset = 0;
+  view.setUint32(offset, 0x46546c67, true); // glTF
+  offset += 4;
+  view.setUint32(offset, 2, true);
+  offset += 4;
+  view.setUint32(offset, totalLength, true);
+  offset += 4;
+
+  view.setUint32(offset, jsonPadded.length, true);
+  offset += 4;
+  view.setUint32(offset, 0x4e4f534a, true); // JSON
+  offset += 4;
+  new Uint8Array(glbBuffer, offset, jsonPadded.length).set(jsonPadded);
+  offset += jsonPadded.length;
+
+  if (hasBin) {
+    view.setUint32(offset, binPadded.length, true);
+    offset += 4;
+    view.setUint32(offset, 0x004e4942, true); // BIN
+    offset += 4;
+    new Uint8Array(glbBuffer, offset, binPadded.length).set(binPadded);
+  }
+
+  return glbBuffer;
+}
+
+function padTo4(data: Uint8Array, padValue: number): Uint8Array {
+  const paddedLength = Math.ceil(data.length / 4) * 4;
+  if (paddedLength === data.length) return data;
+  const padded = new Uint8Array(paddedLength);
+  padded.set(data);
+  padded.fill(padValue, data.length);
+  return padded;
 }
 
 window.addEventListener('resize', onResize);

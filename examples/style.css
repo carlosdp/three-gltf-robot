@@ -60,12 +60,34 @@ body {
   cursor: pointer;
 }
 
-.upload:hover {
+.upload:hover,
+.download:hover {
   border-color: rgba(255, 255, 255, 0.35);
 }
 
 .upload input {
   display: none;
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(120deg, rgba(82, 220, 168, 0.28), rgba(80, 150, 120, 0.18));
+  color: #f7fbff;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.download:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 #status {
