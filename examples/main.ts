@@ -163,7 +163,9 @@ async function loadGltfJson(gltfJson: string, options: { addDemoMeshes?: boolean
         if (options.addDemoMeshes) {
           addRobotMeshes(model);
         }
+        applyPreferredConfiguration(model);
         setupGui(model);
+        frameRobotInScene(gltf.scene);
         resolve();
       },
       (error) => reject(error)
@@ -243,6 +245,31 @@ function addRobotMeshes(model: ReturnType<typeof getRobotKinematics>[number]) {
     mesh.position.z = 0.22;
     forearm.node.add(mesh);
   }
+}
+
+function applyPreferredConfiguration(model: ReturnType<typeof getRobotKinematics>[number]) {
+  const configs = model.configurations ? Object.keys(model.configurations) : [];
+  if (configs.length === 0) return;
+  const preferred = ['home', 'test', 'standing', 'default'];
+  const match = preferred.find((name) => configs.includes(name));
+  model.applyConfiguration(match ?? configs[0]);
+}
+
+function frameRobotInScene(root: THREE.Object3D) {
+  const box = new THREE.Box3().setFromObject(root);
+  if (box.isEmpty()) return;
+
+  const center = new THREE.Vector3();
+  const size = new THREE.Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+
+  root.position.x -= center.x;
+  root.position.z -= center.z;
+  root.position.y -= box.min.y;
+
+  controls.target.set(0, size.y * 0.5, 0);
+  controls.update();
 }
 
 function setupGui(model: ReturnType<typeof getRobotKinematics>[number]) {
