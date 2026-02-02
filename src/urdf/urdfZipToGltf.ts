@@ -89,9 +89,9 @@ type UrdfMimic = {
 };
 
 const URDF_TO_GLTF = new Matrix4().set(
-  0, 1, 0, 0,
+  0, -1, 0, 0,
   0, 0, 1, 0,
-  1, 0, 0, 0,
+  -1, 0, 0, 0,
   0, 0, 0, 1
 );
 const GLTF_TO_URDF = new Matrix4().copy(URDF_TO_GLTF).transpose();

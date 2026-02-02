@@ -96,3 +96,4 @@ The helper expects a browser ZIP containing a `.urdf` plus mesh assets and retur
 - Always call `registerRobotKinematics(loader)` before `loader.load` so the extension is parsed.
 - Joint limits apply by default; pass `{ clamp: false }` to override.
 - Multi-DOF joints expect values in the same order as the `dofs[]` definition.
+- URDF ZIP conversion remaps axes so URDF +X (forward) becomes glTF -Z, URDF +Z becomes glTF +Y, and URDF +Y becomes glTF -X.
